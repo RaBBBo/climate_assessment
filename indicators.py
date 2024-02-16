@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 from settings import input_path, country_map
+from forex_python.converter import CurrencyRates
+from datetime import datetime
 
 
 def min_max_scaling(x, min_x, max_x):
@@ -32,7 +34,8 @@ data = df_gva[['geo_code', 'nace_r2_name', '2018']].rename(columns={'2018': 'GVA
 data = data.merge(df_h_income[['geo_code', 'H_Income']], on='geo_code', how='left')
 data = data.merge(df_h_spending[['geo_code', 'H_Spending']], on='geo_code', how='left')
 
-data['indOperationCostsMortgages'] = data['H_Spending'] / data['GVA']
+data['indOperationCostsMortgages'] = ((data['H_Spending'] / data['H_Income']) / data['GVA'])
+data['indOperationCostsMortgages'].replace([np.inf, -np.inf], np.nan, inplace=True)
 
 data['indOperationCostsMortgages'] = min_max_scaling(
     x=data['indOperationCostsMortgages'],
