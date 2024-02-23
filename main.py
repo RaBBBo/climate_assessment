@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import csv
 import openpyxl
-import networkx as nx 
+import networkx as nx
 import math
 import matplotlib.pyplot as plt
 from settings import input_path
@@ -24,6 +24,7 @@ db_map_EUKLEMS = pd.read_excel(input_path / "Data_map.xlsx", sheet_name='EUKLEMS
 IEA = pd.read_excel(input_path / "IEA EEI database_Highlights.xlsb",
                     sheet_name=['Services - Energy', 'Industry - Energy', 'Transport - Energy']) 
 db_map_IEA = pd.read_excel(input_path / "Data_map.xlsx", sheet_name='IEA')
+
 # Read in currency exchange rates
 e_rates = pd.read_csv(input_path / "API_PA.NUS.FCRF_DS2_en_csv_v2_4772354.csv"
                       ,quotechar = '"'
@@ -33,7 +34,7 @@ e_rates = pd.read_csv(input_path / "API_PA.NUS.FCRF_DS2_en_csv_v2_4772354.csv"
                       ,on_bad_lines='skip')
 
 # Reformat e_rates db
-e_rates = e_rates.loc[:,['Country Name','2018']]
+e_rates = e_rates[['Country Name','2018']]
 e_rates = e_rates.rename(columns={e_rates.columns[0]:'Country',
                                   e_rates.columns[1]:'e_rate'})
 
@@ -42,12 +43,12 @@ euro_area = ['Austria', 'Belgium','Cyprus','Estonia','Finland'
              ,'France','Germany','Greece','Ireland','Italy','Latvia'
              ,'Lithuania','Luxembourg','Malta','Netherlands','Portugal'
              ,'Slovakia','Slovenia','Spain']
-euro_area_rate = float(e_rates[e_rates['Country'] == 'Euro area']['e_rate'])
 
-euro_area_rate = e_rates.loc[e_rates['Country'].eq('Euro area'), '2018']
-# NOTE: rates don't exist
-euro_area_rate = e_rates.loc[e_rates['Country'].isin(euro_area), '2018']
-#e_rates.loc[e_rates['Country'].isin(euro_area),'e_rate'] = euro_area_rate
+# euro_area_rate = e_rates.loc[e_rates['Country'].eq('Euro area')]
+# euro_area_rate = e_rates.loc[e_rates['Country'].isin(euro_area)] # NOTE: rates don't exist
+
+euro_area_rate = float(e_rates[e_rates['Country'] == 'Euro area']['e_rate'])
+e_rates.loc[e_rates['Country'].isin(euro_area),'e_rate'] = euro_area_rate # fill missing values by the euro area
 
 # Read and reformat database structure
 db_structure = EUROSTAT_ENV_WAT_ABS['Summary'].drop(index=range(13)) # Drop rows without data
