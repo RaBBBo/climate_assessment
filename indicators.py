@@ -37,25 +37,27 @@ df_h_spending.geo_code = df_h_spending.geo_code.map(country_map)
 data = data.merge(df_h_income[['geo_code', 'H_Income']], on='geo_code', how='left')
 data = data.merge(df_h_spending[['geo_code', 'H_Spending']], on='geo_code', how='left')
 
-data['OperationCostsMortgages'] = (data['H_Spending'] / data['H_Income'])
-data['OperationCostsMortgages'].replace([np.inf, -np.inf], np.nan, inplace=True)
+data['indOperationCostsMortgages'] = (data['H_Spending'] / data['H_Income'])
+data['indOperationCostsMortgages'].replace([np.inf, -np.inf], np.nan, inplace=True)
 
-upper_abs = np.nanpercentile(data['OperationCostsMortgages'], q=90)
-lower_abs = np.nanpercentile(data['OperationCostsMortgages'], q=10)
+data['indOperationCostsMortgages'] = min_max_scaling(x=data['indOperationCostsMortgages'])
 
-data['OperationCostsMortgages'] = np.clip(data['OperationCostsMortgages'],
-                                          a_min=lower_abs, 
-                                          a_max=upper_abs)
+# - Water abstraction
+params = {
+    "format": "format=JSON",
+    "filters": {"time":"2019"},
+    "sinceTimePeriod" : "sinceTimePeriod = 2012",
+    "unit":"unit=MIO_M3"
+}
+dataset = "env_wat_abs"
+d = DataProcessor(dataset=dataset, params=params)
+df, meta_data = d.process_data()
 
-data['indOperationCostsMortgages'] = min_max_scaling(
-    x=data['OperationCostsMortgages'],
-    min_x=data['OperationCostsMortgages'].min(skipna=True),
-    max_x=data['OperationCostsMortgages'].max(skipna=True))
+df_water_abstraction = df
 
-data['indOperationCostsMortgages2'] = scaler.fit_transform(data['OperationCostsMortgages'].values.reshape(-1, 1))
+data = data.merge(df_water_abstraction[['geo_code', 'Water_Abstraction']], on='geo_code', how='left')
 
-
-print(data.groupby('nace_r2_name')['indOperationCostsMortgages2'].mean())
+data['indWaterAbstraction'] = min_max_scaling(data['Water_Abstraction'] / data['GVA'])
 
 
 # - Transport and supply
@@ -67,8 +69,19 @@ data['TransportSupply'] = data['Ip_TraEq'] / data['GVA']
 data['indTransportSupply'] = data.groupby('nace_r2_name')['TransportSupply'].transform('mean')
 
 data['indTransportSupply'] = min_max_scaling(
-    x=data['indTransportSupply'], 
+    x=data['indTransportSupply'],
     min_x=data['indTransportSupply'].min(skipna=True),
     max_x=data['indTransportSupply'].max(skipna=True))
 
 data['indTransportSupply'] = scaler.fit_transform(data['indTransportSupply'].values.reshape(-1, 1))
+
+
+
+
+
+
+
+
+
+
+
