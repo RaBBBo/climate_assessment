@@ -3,6 +3,9 @@ from pathlib import Path
 
 input_path = Path(ROOT_PATH_GIT) / 'proxies'
 
+output_path = Path(ROOT_PATH_GIT)
+
+
 country_map = {
     'JPN': 'JP',
     'NLD': 'NL',
