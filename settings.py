@@ -1,7 +1,8 @@
 from path_configs import ROOT_PATH_GIT
 from pathlib import Path
 
-input_path = Path(ROOT_PATH_GIT) / 'proxies'
+input_path = Path(ROOT_PATH_GIT) / 'proxies' /'old_proxies'
+output_path = Path(ROOT_PATH_GIT) / 'results'
 
 country_map = {
     'JPN': 'JP',
