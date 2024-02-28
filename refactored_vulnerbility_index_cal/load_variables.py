@@ -12,7 +12,7 @@ class LoadVariables:
         self.EUKLEMS_INTANPROD_naccounts = pd.read_csv((self.input_path + "national accounts.csv"), quotechar = '"', quoting=1, doublequote = True)
         self.EUKLEMS_INTANPROD_caccounts = pd.read_csv((self.input_path + "capital accounts.csv"), quotechar = '"', quoting=1, doublequote = True)
         self.db_map_EUKLEMS = pd.read_excel((self.input_path + "Data_map.xlsx"), sheet_name = 'EUKLEMS')
-        self.IEA = pd.read_excel((self.input_path + "IEA EEI database_Highlights.xlsb"), sheet_name=['Services - Energy', 'Industry - Energy', 'Transport - Energy'], engine=None) 
+        self.IEA = pd.read_excel((self.input_path + "IEA EEI database_Highlights.xlsb"), sheet_name=['Services - Energy', 'Industry - Energy', 'Transport - Energy'], engine='pyxlsb') 
         self.db_map_IEA = pd.read_excel((self.input_path + "Data_map.xlsx"), sheet_name = 'IEA')
         self.e_rates = pd.read_csv((self.input_path + "API_PA.NUS.FCRF_DS2_en_csv_v2_4772354.csv"), quotechar = '"', quoting=1, doublequote = True, skiprows=[0,1,2,3], on_bad_lines='skip')
         self.e_rates = self.e_rates.loc[:,['Country Name','2018']]
