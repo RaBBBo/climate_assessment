@@ -103,7 +103,7 @@ for index,row in db_map_EUROSTAT.iterrows():
 
 print(f"NR_data_all \n {NR_data_all}")
 
-#read database
+#read database energy
 IEA = pd.read_excel((input_path / "IEA EEI database_Highlights.xlsb"),
                     sheet_name=['Services - Energy', 'Industry - Energy', 'Transport - Energy']) 
 db_map_IEA = pd.read_excel((input_path / "Data_map.xlsx"),
@@ -151,10 +151,9 @@ for index,row in db_map_IEA.iterrows():
     except:
         continue
 print(f"ES_data_all \n {ES_data_all}")
-# print(f"smap \n {smap}")
+
 
 ### from EUKLEMS_INTANPROD dbs and convert all national currency to USD
-# print(f"smap \n {smap}")
 def EUKLEMS(variables,db_input,smap, convert = False, e_rates = e_rates):
      
     data = db_input[db_input['nace_r2_code'].isin(smap)]
@@ -206,14 +205,14 @@ def EUKLEMS(variables,db_input,smap, convert = False, e_rates = e_rates):
 #   print(f"data converted to USD \n {data}")
     return data
 
-RM_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
-T_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
-OPEX_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
-CAPEX_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
-BA_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
-WF_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
+RM_data_all = pd.DataFrame(columns = ['Country','Value','Sector']) #raw material
+T_data_all = pd.DataFrame(columns = ['Country','Value','Sector']) #transport
+OPEX_data_all = pd.DataFrame(columns = ['Country','Value','Sector']) #operations
+CAPEX_data_all = pd.DataFrame(columns = ['Country','Value','Sector']) # non-biological assets
+BA_data_all = pd.DataFrame(columns = ['Country','Value','Sector']) #biological assets
+WF_data_all = pd.DataFrame(columns = ['Country','Value','Sector']) #workforce
 
-# Iterate for each sector and find NR data
+# Iterate for each sector and find 6 categories of data
 for index,row in db_map_EUKLEMS.iterrows():
 #     print(row['Heatmap_sector_level_3_cd'])
     
@@ -223,12 +222,11 @@ for index,row in db_map_EUKLEMS.iterrows():
         # Some heatmap sectors map to multiple db sectors
         smap = row['nace_r2_code'].split(";")
         
-        RM_data = EUKLEMS(variables = ['II_CP'],
+        RM_data = EUKLEMS(variables = ['II_CP'], # don't know what is II_CP, but related to RM
                           db_input = EUKLEMS_INTANPROD_naccounts,
                           smap = smap,
                           convert = True)
-       ## print(f"RM_data {RM_data}")
-#         RM_data_all = RM_data_all.append(RM_data, ignore_index = True)
+
         RM_data_all = pd.concat([RM_data_all, RM_data], ignore_index = True)
         
         
@@ -276,7 +274,7 @@ for index,row in db_map_EUKLEMS.iterrows():
 # Create empty output database
 GVA_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
 
-# Iterate for each sector and find NR data
+# Iterate for each sector and find GVA data
 for index,row in db_map_EUKLEMS.iterrows():
 #     print(row['Heatmap_sector_level_3_cd'])
     # if row['Heatmap_sector_level_3_cd'] == '3.1.1': #'10.1.2': #
