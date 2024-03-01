@@ -8,9 +8,16 @@ import math
 import matplotlib.pyplot as plt
 from settings import input_path, output_path
 
-# Load in data
+# define range
+year = 2018
+
+# Load data
+
+# water abstraction - natural resources
 EUROSTAT_ENV_WAT_ABS = pd.read_excel(input_path / 'water_abstraction.xlsx', sheet_name=None)
+# heatmap section mapping - sector, water process, water sources, unit
 db_map_EUROSTAT = pd.read_excel(input_path / "Data_map.xlsx", sheet_name='Eurostat')
+#
 EUKLEMS_INTANPROD_naccounts = pd.read_csv(input_path / "national accounts.csv"
                                           ,quotechar='"'
                                           ,quoting=1
@@ -34,11 +41,11 @@ e_rates = pd.read_csv(input_path / "API_PA.NUS.FCRF_DS2_en_csv_v2_4772354.csv"
                       ,on_bad_lines='skip')
 
 # Reformat e_rates db
-e_rates = e_rates[['Country Name','2018']]
+e_rates = e_rates[['Country Name',f'{year}']]
 e_rates = e_rates.rename(columns={e_rates.columns[0]:'Country',
                                   e_rates.columns[1]:'e_rate'})
 
-# Assign e_rates to euro area countries in 2018
+# Assign e_rates to euro area countries in year
 euro_area = ['Austria', 'Belgium','Cyprus','Estonia','Finland'
              ,'France','Germany','Greece','Ireland','Italy','Latvia'
              ,'Lithuania','Luxembourg','Malta','Netherlands','Portugal'
@@ -51,13 +58,14 @@ euro_area_rate = float(e_rates[e_rates['Country'] == 'Euro area']['e_rate'])
 e_rates.loc[e_rates['Country'].isin(euro_area),'e_rate'] = euro_area_rate # fill missing values by the euro area
 
 # Read and reformat database structure
+# db_structure: structure of EUROSTAT_ENV_WAT_ABS with water abstraction
 db_structure = EUROSTAT_ENV_WAT_ABS['Summary'].drop(index=range(13)) # Drop rows without data
 db_structure = db_structure.drop(columns=db_structure.columns[0], axis=1) # Drop first column without data
 db_structure.columns = db_structure.iloc[0] # Set first row as column name
 db_structure = db_structure.tail(-1) # Remove first row
 # print(f"db_structure \n {db_structure}")
 
-# Create empty db to store outpu
+# Create empty db to store output
 NR_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
 
 # Iterate for each sector and find NR data
@@ -70,8 +78,8 @@ for index,row in db_map_EUROSTAT.iterrows():
         &(db_structure ['Unit of measure'] == row['Unit of measure'])
         ]['Contents'].item()
 
-    # Keep data for 2018 and remove all others
-    r,c = np.where(EUROSTAT_ENV_WAT_ABS[sheet]=='2018')
+    # Locate for a certain year
+    r,c = np.where(EUROSTAT_ENV_WAT_ABS[sheet]==f'{year}')
     NR_data = EUROSTAT_ENV_WAT_ABS[sheet].iloc[int(r)+2:,[0,int(c)]]
     # Drop nan values
     NR_data= NR_data[
@@ -84,6 +92,7 @@ for index,row in db_map_EUROSTAT.iterrows():
                                    NR_data.columns[1]: "Value"}
                           )   
 #     print(f"NR_data \n {NR_data}")
+    # row['Heatmap_sector_level_3_cd': sector mapping
     NR_data['Sector'] = row['Heatmap_sector_level_3_cd'] 
 
 #     NR_data_all = NR_data_all.append(NR_data, ignore_index = True)
@@ -122,10 +131,10 @@ for index,row in db_map_IEA.iterrows():
         ES_data = ES_data.tail(-1) # Then delete first row
         ES_data = ES_data[ES_data.iloc[:,1].isin(smap)]
         
-        # Keep data for 2018 and remove all others
-        ES_data = ES_data.loc[:,['Country',2018]]
+        # Keep data for year and remove all others
+        ES_data = ES_data.loc[:,['Country',year]]
         # Drop no data values
-        ES_data= ES_data[(ES_data[2018] != '..')
+        ES_data= ES_data[(ES_data[year] != '..')
             ]
         
         # Sum data for the same country
@@ -154,8 +163,8 @@ def EUKLEMS(variables,db_input,smap, convert = False, e_rates = e_rates):
     data = data.loc[:,['nace_r2_code','geo_name', 'year']+variables]
 #     print(f"data11 \n \n {data}")
     
-    # Keep data for 2018 and remove all others
-    data = data[data['year']==2018]
+    # Keep data for year and remove all others
+    data = data[data['year']==year]
     # Drop no data values
     data = data[data[variables].notna().all(axis=1)]
     #Drop irrelevant columns
@@ -631,7 +640,7 @@ Final_VI_00_norm
 #     Final_VI_00_norm[VI] = (Final_VI_00[VI] - min_value) / (max_value - min_value)
 
 
-Final_VI_00_norm.to_csv((f'{output_path}/VI_norm.csv'), sep=';', decimal=',')
+Final_VI_00_norm.to_csv((f'{output_path}/VI_norm_{year}.csv'), sep=';', decimal=',')
 
 Final_VI_01_norm = Final_VI_01.copy(deep=True)
 for VI in Final_VI_01.columns:
@@ -639,4 +648,4 @@ for VI in Final_VI_01.columns:
     min_value = Final_VI_01[VI].min()
     Final_VI_01_norm[VI] = (Final_VI_01[VI] - min_value) / (max_value - min_value)
 
-Final_VI_01_norm.to_csv((f'{output_path}/VI_norm_wNL.csv'), sep=';', decimal=',')
+Final_VI_01_norm.to_csv((f'{output_path}/VI_norm_wNL_{year}.csv'), sep=';', decimal=',')
