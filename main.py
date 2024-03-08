@@ -8,7 +8,7 @@ import math
 import matplotlib.pyplot as plt
 from settings import input_path, output_path
 
-# define range
+# define year range
 year = 2018
 
 # Load data
@@ -321,10 +321,12 @@ def GVA_norm(VI,
 
     VI_data_groups = VI_data.groupby(['Country', db_group], as_index=False).first()
     GVA_data_groups = GVA_data.groupby(['Country', 'nace_r2_code'], as_index=False).first()
+    # nace_r2_code correponds to names of industries/sectors
 
     merge_group = data_groups | GVA_groups
     group_list = list(merge_group.values())
 
+    # don't know what this means
     G = nx.Graph()
     for l in group_list:
         nx.add_path(G, l)
@@ -348,7 +350,7 @@ def GVA_norm(VI,
 
         select_GVA = GVA_data_groups[GVA_data_groups['nace_r2_code'].isin(rel_groups_GVA)]
         # print(f"select_GVA {select_GVA}")
-        sum_GVA = select_GVA.groupby(by='Country', as_index=False)['Value'].sum()
+        sum_GVA = select_GVA.groupby(by='Country', as_index=False)['Value'].sum() #it's not sum but just value by country
         # print(f"sum_GVA {sum_GVA}")
 
         select_VI = VI_data_groups[VI_data_groups[db_group].isin(rel_groups_VI)]
@@ -360,6 +362,8 @@ def GVA_norm(VI,
 
         data_merge['Value_norm_' + VI] = (data_merge['Value_' + VI]
                                           / data_merge['Value_GVA'])
+        # VI/GVA
+
         for sector in group:
             data_merge['Sector'] = sector
             # print(f"data_norm00 {data_norm}")
@@ -618,6 +622,7 @@ for VI in Final_VI_00.columns:
     min_value = Final_VI_00[VI].min()
     Final_VI_00_norm[VI] = (Final_VI_00[VI] - min_value) / (max_value - min_value)
 
+
 Final_VI_00_norm["NR"] = Final_VI_00_norm["NR"].astype(float).fillna(0).round(2)
 Final_VI_00_norm["ES"] = Final_VI_00_norm["ES"].astype(float).fillna(0).round(2)
 Final_VI_00_norm["RM"] = Final_VI_00_norm["RM"].astype(float).fillna(0).round(2)
@@ -627,16 +632,37 @@ Final_VI_00_norm["CAPEX"] = Final_VI_00_norm["CAPEX"].astype(float).fillna(0).ro
 Final_VI_00_norm["BA"] = Final_VI_00_norm["BA"].astype(float).fillna(0).round(2)
 Final_VI_00_norm["WF"] = Final_VI_00_norm["WF"].astype(float).fillna(0).round(2)
 
-# Final_VI_00_norm.dtypes
-Final_VI_00_norm
+# apply weighing scheme
+def WeighingScheme(df):
+    for VI in df.columns:
+        for idx in df.index:
+            if VI in ["NR", "ES", "RM", "T"]:
+                df.loc[idx, VI] = df.loc[idx, VI] * 0.25
+            else:
+                if VI in ["OPEX", "WF"]:
+                    if idx == '12.1.1':
+                        df.loc[idx, VI] = df.loc[idx, VI] * 1.5
+                    else:
+                        df.loc[idx, VI] = df.loc[idx, VI] * 0.33
+                else:
+                    if VI == "CAPEX":
+                        if idx == '12.1.1':
+                            df.loc[idx, VI] = df.loc[idx, VI] * 0.5
+                        else:
+                            if idx in ['1.11.1', '2.1.1', '2.1.2', '2.2.1', '2.2.2',
+                                       '3.1.1', '3.2.1', '4.1.1', '5.1.1', '6.1.1', '7.1.1', '7.1.2', '7.1.3',
+                                       '7.2.1', '8.1.1', '8.1.2', '9.1.1', '10.1.1', '10.1.2', '11.1.1']:
+                                df.loc[idx, VI] = df.loc[idx, VI] * 0.33
+                            else:
+                                df.loc[idx, VI] = df.loc[idx, VI] * 0.17
+                    else:
+                        if VI == "BA":
+                            df.loc[idx, VI] = df.loc[idx, VI] * 0.17
+    df = df.round(2)
 
-# #%% Min/max normalisation VI
-# Final_VI_00_norm = Final_VI_00.copy(deep=True)
-# for VI in Final_VI_00.columns:
-#     max_value = Final_VI_00[VI].max()
-#     min_value = Final_VI_00[VI].min()
-#     Final_VI_00_norm[VI] = (Final_VI_00[VI] - min_value) / (max_value - min_value)
+    return df
 
+Final_VI_00_norm = WeighingScheme(Final_VI_00_norm)
 
 Final_VI_00_norm.to_csv((f'{output_path}/VI_norm_{year}.csv'), sep=';', decimal=',')
 
@@ -645,5 +671,7 @@ for VI in Final_VI_01.columns:
     max_value = Final_VI_01[VI].max()
     min_value = Final_VI_01[VI].min()
     Final_VI_01_norm[VI] = (Final_VI_01[VI] - min_value) / (max_value - min_value)
+
+Final_VI_01_norm = WeighingScheme(Final_VI_01_norm)
 
 Final_VI_01_norm.to_csv((f'{output_path}/VI_norm_wNL_{year}.csv'), sep=';', decimal=',')
