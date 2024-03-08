@@ -6,18 +6,37 @@ import openpyxl
 import networkx as nx
 import math
 import matplotlib.pyplot as plt
+
+from api_sourcing.dataprocessor import DataProcessor
 from settings import input_path, output_path
 
 # define year range
-year = 2018
+year = 2010
 
 # Load data
 
 # water abstraction - natural resources
-EUROSTAT_ENV_WAT_ABS = pd.read_excel(input_path / 'water_abstraction.xlsx', sheet_name=None)
+# EUROSTAT_ENV_WAT_ABS = pd.read_excel(input_path / 'water_abstraction.xlsx', sheet_name=None)
+params = {
+    "wat_proc": ["ABS_AGR", "ABS_PWS"],
+    "wat_src": ["FRW", "FSW"],
+    "sinceTimePeriod": "2012",
+    "unit": ["MIO_M3", "M3_HAB"],  # "M3_HAB",
+    "geo": ["DE", "BE", "CZ"],
+}
+dataset = "env_wat_abs"
+
+d = DataProcessor(dataset=dataset, params=params)
+df, meta_data = d.process_data()
+
 # heatmap section mapping - sector, water process, water sources, unit
 db_map_EUROSTAT = pd.read_excel(input_path / "Data_map.xlsx", sheet_name='Eurostat')
-#
+
+df = df.rename(columns={"sector": "Water process", "source": "Water sources", "unit": "Unit of measure"})
+df["Water process"] = df["Water process"].map(
+    {'Water abstraction by agriculture, forestry, fishing': 'Water abstraction for agriculture'})
+EUROSTAT_ENV_WAT_ABS = df.merge(db_map_EUROSTAT, how="left", on=["Water process", "Water sources", "Unit of measure"])
+
 EUKLEMS_INTANPROD_naccounts = pd.read_csv(input_path / "national accounts.csv"
                                           ,quotechar='"'
                                           ,quoting=1
@@ -198,7 +217,8 @@ def EUKLEMS(variables,db_input,smap, convert = False, e_rates = e_rates):
         #data = pd.merge(data,e_rates)
 #         print(f"data22{data}")
         # Convert NAC to USD
-        #data['Value'] = data['Value_NAC'] / data['e_rate']
+        # e_rates = e_rates.set_index("Country")
+
         data['Value'] = data['Value_NAC'] / 0.846772667108111
         #data = data.drop(columns=['Value_NAC','e_rate'])
         data = data.drop(columns=['Value_NAC'])               
