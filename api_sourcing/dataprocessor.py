@@ -81,14 +81,11 @@ class DataProcessor:
         df['unit_idx'] = df['unit_idx'].astype('int64') % n_units
 
         # Calculate the idx column for the time series
-        df['years'] = df["index"] / n_years
-        df['years'] = df['years'].astype('int64') % (n_sectors * n_sources * countries)
+        df['years'] = df["index"] % n_years
 
-        # Calculate the multiple for the time series
-        multiple = df['years'].astype('int64').nunique()
-
-        # Create a dictionary to map the index to the period
-        dict_map = Utils().make_ts_dict(ts_dict, multiple)
+        # Calculate the idx column for the time series
+        df['countries'] = df["index"] / n_years
+        df['countries'] = df['countries'].astype('int64') % countries
 
         # Create the multiple for the sectors
         multiple_sectors = df['sector_idx'].astype('int64').nunique()
@@ -98,12 +95,9 @@ class DataProcessor:
         multiple_source = df['source_idx'].astype('int64').nunique()
         source_map = Utils().make_sector_dict(source_dict, multiple_source)
 
-        # Create a dictionary to map the index to the period
-        country_map = Utils().make_ts_dict(countries_dict, multiple)
-
         # Add the country and period columns to the dataframe
-        df['country'] = df['years'].map(country_map)
-        df['period'] = df['index'].map(dict_map)
+        df['country'] = df['countries'].map(countries_dict)
+        df['period'] = df['years'].map(ts_dict)
         df['sector'] = df['sector_idx'].map(sector_map)
         df['source'] = df['source_idx'].map(source_map)
         df['unit'] = df['unit_idx'].map(unit_dict)
