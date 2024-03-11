@@ -46,7 +46,6 @@ class DataProcessor:
         }
         # Calculate number of sectors
         sector_dict = {i: v for i, v in enumerate(data_dimensions["Process"].values())}
-        n_sectors = len(sector_dict)
         # Calculate number of sources
         source_dict = {i: v for i, v in enumerate(data_dimensions["Source"].values())}
         n_sources = len(source_dict)
