@@ -6,18 +6,37 @@ import openpyxl
 import networkx as nx
 import math
 import matplotlib.pyplot as plt
+
+from api_sourcing.dataprocessor import DataProcessor
 from settings import input_path, output_path
 
-# define range
-year = 2018
+# define year range
+year = 2010
 
 # Load data
 
 # water abstraction - natural resources
-EUROSTAT_ENV_WAT_ABS = pd.read_excel(input_path / 'water_abstraction.xlsx', sheet_name=None)
+# EUROSTAT_ENV_WAT_ABS = pd.read_excel(input_path / 'water_abstraction.xlsx', sheet_name=None)
+params = {
+    "wat_proc": ["ABS_AGR", "ABS_PWS"],
+    "wat_src": ["FRW", "FSW"],
+    "sinceTimePeriod": "2012",
+    "unit": ["MIO_M3", "M3_HAB"],  # "M3_HAB",
+    "geo": ["DE", "BE", "CZ"],
+}
+dataset = "env_wat_abs"
+
+d = DataProcessor(dataset=dataset, params=params)
+df, meta_data = d.process_data()
+
 # heatmap section mapping - sector, water process, water sources, unit
 db_map_EUROSTAT = pd.read_excel(input_path / "Data_map.xlsx", sheet_name='Eurostat')
-#
+
+df = df.rename(columns={"sector": "Water process", "source": "Water sources", "unit": "Unit of measure"})
+df["Water process"] = df["Water process"].map(
+    {'Water abstraction by agriculture, forestry, fishing': 'Water abstraction for agriculture'})
+EUROSTAT_ENV_WAT_ABS = df.merge(db_map_EUROSTAT, how="left", on=["Water process", "Water sources", "Unit of measure"])
+
 EUKLEMS_INTANPROD_naccounts = pd.read_csv(input_path / "national accounts.csv"
                                           ,quotechar='"'
                                           ,quoting=1
@@ -103,7 +122,7 @@ for index,row in db_map_EUROSTAT.iterrows():
 
 print(f"NR_data_all \n {NR_data_all}")
 
-#read database
+#read database energy
 IEA = pd.read_excel((input_path / "IEA EEI database_Highlights.xlsb"),
                     sheet_name=['Services - Energy', 'Industry - Energy', 'Transport - Energy']) 
 db_map_IEA = pd.read_excel((input_path / "Data_map.xlsx"),
@@ -151,10 +170,9 @@ for index,row in db_map_IEA.iterrows():
     except:
         continue
 print(f"ES_data_all \n {ES_data_all}")
-# print(f"smap \n {smap}")
+
 
 ### from EUKLEMS_INTANPROD dbs and convert all national currency to USD
-# print(f"smap \n {smap}")
 def EUKLEMS(variables,db_input,smap, convert = False, e_rates = e_rates):
      
     data = db_input[db_input['nace_r2_code'].isin(smap)]
@@ -199,21 +217,22 @@ def EUKLEMS(variables,db_input,smap, convert = False, e_rates = e_rates):
         #data = pd.merge(data,e_rates)
 #         print(f"data22{data}")
         # Convert NAC to USD
-        #data['Value'] = data['Value_NAC'] / data['e_rate']
+        # e_rates = e_rates.set_index("Country")
+
         data['Value'] = data['Value_NAC'] / 0.846772667108111
         #data = data.drop(columns=['Value_NAC','e_rate'])
         data = data.drop(columns=['Value_NAC'])               
 #   print(f"data converted to USD \n {data}")
     return data
 
-RM_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
-T_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
-OPEX_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
-CAPEX_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
-BA_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
-WF_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
+RM_data_all = pd.DataFrame(columns = ['Country','Value','Sector']) #raw material
+T_data_all = pd.DataFrame(columns = ['Country','Value','Sector']) #transport
+OPEX_data_all = pd.DataFrame(columns = ['Country','Value','Sector']) #operations
+CAPEX_data_all = pd.DataFrame(columns = ['Country','Value','Sector']) # non-biological assets
+BA_data_all = pd.DataFrame(columns = ['Country','Value','Sector']) #biological assets
+WF_data_all = pd.DataFrame(columns = ['Country','Value','Sector']) #workforce
 
-# Iterate for each sector and find NR data
+# Iterate for each sector and find 6 categories of data
 for index,row in db_map_EUKLEMS.iterrows():
 #     print(row['Heatmap_sector_level_3_cd'])
     
@@ -223,12 +242,11 @@ for index,row in db_map_EUKLEMS.iterrows():
         # Some heatmap sectors map to multiple db sectors
         smap = row['nace_r2_code'].split(";")
         
-        RM_data = EUKLEMS(variables = ['II_CP'],
+        RM_data = EUKLEMS(variables = ['II_CP'], # don't know what is II_CP, but related to RM
                           db_input = EUKLEMS_INTANPROD_naccounts,
                           smap = smap,
                           convert = True)
-       ## print(f"RM_data {RM_data}")
-#         RM_data_all = RM_data_all.append(RM_data, ignore_index = True)
+
         RM_data_all = pd.concat([RM_data_all, RM_data], ignore_index = True)
         
         
@@ -276,7 +294,7 @@ for index,row in db_map_EUKLEMS.iterrows():
 # Create empty output database
 GVA_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
 
-# Iterate for each sector and find NR data
+# Iterate for each sector and find GVA data
 for index,row in db_map_EUKLEMS.iterrows():
 #     print(row['Heatmap_sector_level_3_cd'])
     # if row['Heatmap_sector_level_3_cd'] == '3.1.1': #'10.1.2': #
@@ -323,10 +341,12 @@ def GVA_norm(VI,
 
     VI_data_groups = VI_data.groupby(['Country', db_group], as_index=False).first()
     GVA_data_groups = GVA_data.groupby(['Country', 'nace_r2_code'], as_index=False).first()
+    # nace_r2_code correponds to names of industries/sectors
 
     merge_group = data_groups | GVA_groups
     group_list = list(merge_group.values())
 
+    # don't know what this means
     G = nx.Graph()
     for l in group_list:
         nx.add_path(G, l)
@@ -350,7 +370,7 @@ def GVA_norm(VI,
 
         select_GVA = GVA_data_groups[GVA_data_groups['nace_r2_code'].isin(rel_groups_GVA)]
         # print(f"select_GVA {select_GVA}")
-        sum_GVA = select_GVA.groupby(by='Country', as_index=False)['Value'].sum()
+        sum_GVA = select_GVA.groupby(by='Country', as_index=False)['Value'].sum() #it's not sum but just value by country
         # print(f"sum_GVA {sum_GVA}")
 
         select_VI = VI_data_groups[VI_data_groups[db_group].isin(rel_groups_VI)]
@@ -362,6 +382,8 @@ def GVA_norm(VI,
 
         data_merge['Value_norm_' + VI] = (data_merge['Value_' + VI]
                                           / data_merge['Value_GVA'])
+        # VI/GVA
+
         for sector in group:
             data_merge['Sector'] = sector
             # print(f"data_norm00 {data_norm}")
@@ -620,6 +642,7 @@ for VI in Final_VI_00.columns:
     min_value = Final_VI_00[VI].min()
     Final_VI_00_norm[VI] = (Final_VI_00[VI] - min_value) / (max_value - min_value)
 
+
 Final_VI_00_norm["NR"] = Final_VI_00_norm["NR"].astype(float).fillna(0).round(2)
 Final_VI_00_norm["ES"] = Final_VI_00_norm["ES"].astype(float).fillna(0).round(2)
 Final_VI_00_norm["RM"] = Final_VI_00_norm["RM"].astype(float).fillna(0).round(2)
@@ -629,16 +652,37 @@ Final_VI_00_norm["CAPEX"] = Final_VI_00_norm["CAPEX"].astype(float).fillna(0).ro
 Final_VI_00_norm["BA"] = Final_VI_00_norm["BA"].astype(float).fillna(0).round(2)
 Final_VI_00_norm["WF"] = Final_VI_00_norm["WF"].astype(float).fillna(0).round(2)
 
-# Final_VI_00_norm.dtypes
-Final_VI_00_norm
+# apply weighing scheme
+def WeighingScheme(df):
+    for VI in df.columns:
+        for idx in df.index:
+            if VI in ["NR", "ES", "RM", "T"]:
+                df.loc[idx, VI] = df.loc[idx, VI] * 0.25
+            else:
+                if VI in ["OPEX", "WF"]:
+                    if idx == '12.1.1':
+                        df.loc[idx, VI] = df.loc[idx, VI] * 1.5
+                    else:
+                        df.loc[idx, VI] = df.loc[idx, VI] * 0.33
+                else:
+                    if VI == "CAPEX":
+                        if idx == '12.1.1':
+                            df.loc[idx, VI] = df.loc[idx, VI] * 0.5
+                        else:
+                            if idx in ['1.11.1', '2.1.1', '2.1.2', '2.2.1', '2.2.2',
+                                       '3.1.1', '3.2.1', '4.1.1', '5.1.1', '6.1.1', '7.1.1', '7.1.2', '7.1.3',
+                                       '7.2.1', '8.1.1', '8.1.2', '9.1.1', '10.1.1', '10.1.2', '11.1.1']:
+                                df.loc[idx, VI] = df.loc[idx, VI] * 0.33
+                            else:
+                                df.loc[idx, VI] = df.loc[idx, VI] * 0.17
+                    else:
+                        if VI == "BA":
+                            df.loc[idx, VI] = df.loc[idx, VI] * 0.17
+    df = df.round(2)
 
-# #%% Min/max normalisation VI
-# Final_VI_00_norm = Final_VI_00.copy(deep=True)
-# for VI in Final_VI_00.columns:
-#     max_value = Final_VI_00[VI].max()
-#     min_value = Final_VI_00[VI].min()
-#     Final_VI_00_norm[VI] = (Final_VI_00[VI] - min_value) / (max_value - min_value)
+    return df
 
+Final_VI_00_norm = WeighingScheme(Final_VI_00_norm)
 
 Final_VI_00_norm.to_csv((f'{output_path}/VI_norm_{year}.csv'), sep=';', decimal=',')
 
@@ -647,5 +691,7 @@ for VI in Final_VI_01.columns:
     max_value = Final_VI_01[VI].max()
     min_value = Final_VI_01[VI].min()
     Final_VI_01_norm[VI] = (Final_VI_01[VI] - min_value) / (max_value - min_value)
+
+Final_VI_01_norm = WeighingScheme(Final_VI_01_norm)
 
 Final_VI_01_norm.to_csv((f'{output_path}/VI_norm_wNL_{year}.csv'), sep=';', decimal=',')
