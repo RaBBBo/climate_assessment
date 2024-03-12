@@ -362,6 +362,9 @@ for year in range(year_start,year_end+1):
         
     print(f"GVA_data_all {GVA_data_all}")
 
+    mask = GVA_data_all["Country"].isin(common_list_full_name)
+    GVA_data_all = GVA_data_all.loc[mask, :].copy()
+
     #%% Normalise countryxsector VI by countryxsector GVA (IntOutput_Normalisation_VI.csv)
     def GVA_norm(VI,
                 VI_data,
@@ -412,12 +415,15 @@ for year in range(year_start,year_end+1):
             rel_groups_VI = list(set(rel_groups_VI))
 
             select_GVA = GVA_data_groups[GVA_data_groups['nace_r2_code'].isin(rel_groups_GVA)]
-            # print(f"select_GVA {select_GVA}")
+            print(f"select_GVA {select_GVA}")
             sum_GVA = select_GVA.groupby(by='Country', as_index=False)['Value'].sum() #it's not sum but just value by country
-            # print(f"sum_GVA {sum_GVA}")
+            print(f"sum_GVA {sum_GVA}")
 
             select_VI = VI_data_groups[VI_data_groups[db_group].isin(rel_groups_VI)]
             sum_VI = select_VI.groupby(by='Country', as_index=False)['Value'].sum()
+
+            if 'NL' in sum_VI.Country.unique():
+                sum_VI['Country'] = [EU_country_abbreviations.get(abbr) for abbr in sum_VI['Country']]
 
             data_merge = pd.merge(sum_VI, sum_GVA,
                                 on='Country',
