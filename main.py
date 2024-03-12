@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import seaborn as sns
 from dq import DataQuality
 
 from api_sourcing.dataprocessor import DataProcessor
@@ -14,7 +15,6 @@ year_end = 2019
 
 for year in range(year_start,year_end+1):
         
-
     # Load data
 
     # water abstraction - natural resources
@@ -376,6 +376,9 @@ for year in range(year_start,year_end+1):
 
             select_VI = VI_data_groups[VI_data_groups[db_group].isin(rel_groups_VI)]
             sum_VI = select_VI.groupby(by='Country', as_index=False)['Value'].sum()
+                
+            if 'NL' in sum_VI.Country.unique():
+                sum_VI['Country'] = [EU_country_abbreviations.get(abbr) for abbr in sum_VI['Country']]
 
             data_merge = pd.merge(sum_VI, sum_GVA,
                                 on='Country',
@@ -684,6 +687,27 @@ for year in range(year_start,year_end+1):
         return df
 
     Final_VI_00_norm = WeighingScheme(Final_VI_00_norm)
+
+    Final_VI = Final_VI_00_norm.to_numpy()
+    x = ["Natural Resources", "Energy", "Raw Materials", "Transport", "Operations", "Non-Biological Assets",
+         "Biological Assets", "Workforce"]
+    y = ["Cotton", "Grain & Oilseeds - Production", "Sugar Crops", "Fruit", "Vegetables Covered",
+         "Vegetables Non-Covered", "Floriculture", "Forestry and logging", "Beef", "Dairy Cattle and Milk Production",
+         "Aquaculture", "Wild Catch", "Poultry", "Pork", "Sheep &Goat", "Remaining Animal Protein",
+         "Remaining Agriculture",
+         "Hay & Tabacco Farming", "Wholesale Trade (F&A)", "Retail Trade (F&A)", "Wholesale Trade (Non-F&A)",
+         "Retail Trade (Non-F&A)", "Manufacturing (F&A)", "Manufacturing (Non-F&A)",
+         "Financial and insurance activities",
+         "Construction", "Mining and quarrying", "Fossil fuel and other - Generation", "Utilities - Distribution",
+         "Renewables", "Collection and treatment of waste", "Other services", "Public Sector and services",
+         "Real estate activities", "Transportation over Water", "Remaining transportation & Storage", "Mortgages"]
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(Final_VI, annot=False, cmap=sns.color_palette("Reds", as_cmap=True), cbar=True)
+    plt.title("Custom Heatmap")
+    plt.xticks([i + 0.5 for i in range(0, 8)], x, fontsize=8, ha='center', rotation=0)
+    plt.yticks([i + 0.5 for i in range(0, 37)], y, fontsize=8, rotation=0)
+
+    plt.show()
 
     Final_VI_00_norm.to_csv((f'{output_path}/VI_norm_{year}.csv'), sep=';', decimal=',')
 
