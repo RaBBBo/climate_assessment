@@ -1,18 +1,16 @@
 # Import modules
 import pandas as pd
 import numpy as np
-import csv
-import openpyxl
 import networkx as nx
-import math
 import matplotlib.pyplot as plt
+from dq import DataQuality
 
 from api_sourcing.dataprocessor import DataProcessor
 from settings import input_path, output_path, EU_countries, EU_country_abbreviations, EU_country_full_name
 
 # define year range
 year_start = 2016
-year_end = 2018
+year_end = 2019
 
 for year in range(year_start,year_end+1):
         
@@ -75,59 +73,13 @@ for year in range(year_start,year_end+1):
                 ,'Lithuania','Luxembourg','Malta','Netherlands','Portugal'
                 ,'Slovakia','Slovenia','Spain']
 
-    # euro_area_rate = e_rates.loc[e_rates['Country'].eq('Euro area')]
-    # euro_area_rate = e_rates.loc[e_rates['Country'].isin(euro_area)] # NOTE: rates don't exist
-
     euro_area_rate = float(e_rates[e_rates['Country'] == 'Euro area']['e_rate'])
     e_rates.loc[e_rates['Country'].isin(euro_area),'e_rate'] = euro_area_rate # fill missing values by the euro area
 
-    # Read and reformat database structure
-    # db_structure: structure of EUROSTAT_ENV_WAT_ABS with water abstraction
-    # db_structure = EUROSTAT_ENV_WAT_ABS['Summary'].drop(index=range(13)) # Drop rows without data
-    # db_structure = db_structure.drop(columns=db_structure.columns[0], axis=1) # Drop first column without data
-    # db_structure.columns = db_structure.iloc[0] # Set first row as column name
-    # db_structure = db_structure.tail(-1) # Remove first row
-    # print(f"db_structure \n {db_structure}")
-
-    # Create empty db to store output
-    # NR_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
 
     mask = EUROSTAT_ENV_WAT_ABS['period']==f'{year}'
     NR_data_all = EUROSTAT_ENV_WAT_ABS.loc[mask, ['country','Values','Heatmap_sector_level_3_cd']]
     NR_data_all = NR_data_all.rename(columns={'country': "Country", 'Values': "Value", 'Heatmap_sector_level_3_cd': "Sector"})
-
-
-    # Iterate for each sector and find NR data
-    # for index,row in db_map_EUROSTAT.iterrows():
-        
-    #     # Find sheet of sector based on db map
-    #     # sheet = db_structure[
-    #     #     (db_structure ['Water process'] == row['Water process'])
-    #     #     &(db_structure ['Water sources'] == row['Water sources'])
-    #     #     &(db_structure ['Unit of measure'] == row['Unit of measure'])
-    #     #     ]['Contents'].item()
-
-    #     # Locate for a certain year
-    #     r,c = np.where(EUROSTAT_ENV_WAT_ABS["period"]==f'{year}')
-    #     NR_data = EUROSTAT_ENV_WAT_ABS[sheet].iloc[int(r)+2:,[0,int(c)]]
-    #     # Drop nan values
-    #     # NR_data= NR_data[
-    #     #     (NR_data.iloc[:,1].notna())
-    #     #     & (NR_data.iloc[:,1] != ':')
-    #     #     ]
-    # #     print(f"NR_data \n {NR_data}")
-    #     # Reform NR_Data
-    #     NR_data = NR_data.rename(columns={NR_data.columns[0]: "Country",
-    #                                    NR_data.columns[1]: "Value"}
-    #                           )   
-    # #     print(f"NR_data \n {NR_data}")
-    #     # row['Heatmap_sector_level_3_cd': sector mapping
-    #     NR_data['Sector'] = row['Heatmap_sector_level_3_cd'] 
-
-    # #     NR_data_all = NR_data_all.append(NR_data, ignore_index = True)
-    #     NR_data_all = pd.concat([NR_data_all,NR_data], ignore_index = True)
-
-    # NR_data_all["Value"] = NR_data_all["Value"].astype(str)
 
 
     print(f"NR_data_all \n {NR_data_all}")
@@ -143,10 +95,6 @@ for year in range(year_start,year_end+1):
 
     # Iterate for each sector and find NR data
     for index,row in db_map_IEA.iterrows():
-    #     print(row['Heatmap_sector_level_3_cd'])
-        # if row['Heatmap_sector_level_3_cd'] == '10.1.2': #'1.1.1': #
-        #     break
-
         #Some sectors have to no data, so assume skip these
         try:
             # Find sheet of sector based on db map
@@ -224,11 +172,6 @@ for year in range(year_start,year_end+1):
         if convert == True:
             # Assign e_rate for countries
             data = data.rename(columns={'Value':'Value_NAC'})
-            #data = pd.merge(data,e_rates)
-    #         print(f"data22{data}")
-            # Convert NAC to USD
-            # e_rates = e_rates.set_index("Country")
-
             data['Value'] = data['Value_NAC'] / 0.846772667108111
             #data = data.drop(columns=['Value_NAC','e_rate'])
             data = data.drop(columns=['Value_NAC'])               
@@ -330,11 +273,26 @@ for year in range(year_start,year_end+1):
 
         return common_list_abbr, common_list_full_name, df_set_new
 
-    (common_list_abbr, common_list_full_name, [NR_data_all, ES_data_all, T_data_all,RM_data_all, OPEX_data_all,CAPEX_data_all,BA_data_all,WF_data_all]) = Remove_countries([NR_data_all, ES_data_all, T_data_all,RM_data_all, OPEX_data_all,CAPEX_data_all,BA_data_all,WF_data_all]) #raw material
+    (common_list_abbr, common_list_full_name, [NR_data_all, ES_data_all, T_data_all, RM_data_all, OPEX_data_all, CAPEX_data_all, BA_data_all, WF_data_all]) = Remove_countries([NR_data_all, ES_data_all, T_data_all,RM_data_all, OPEX_data_all,CAPEX_data_all,BA_data_all,WF_data_all]) #raw material
+
+    dfs_array = [NR_data_all, ES_data_all, T_data_all, RM_data_all, OPEX_data_all, CAPEX_data_all, BA_data_all,WF_data_all]
+    strings = ['NR', 'ES', 'T', 'RM', 'OPEX', 'CAPEX', 'BA', 'WF']
+
+    # DQ check 
+    count = 0
+    df_dict = {}
+    for df in dfs_array:
+        dq = DataQuality(df)
+        df = dq.check_completeness()
+        #dq.show_distributions(strings[count], year)
+        df_dict[strings[count]] = df
+        count += 1
+
+    with pd.ExcelWriter(f'dq_report_{year}.xlsx') as writer:
+        for name, df in df_dict.items():
+          df.to_excel(writer, sheet_name=name)
 
     # Get GVA for country x sector from EUKLEMS_INTANPROD dbs and convert to USD from NAC
-
-    # Create empty output database
     GVA_data_all = pd.DataFrame(columns = ['Country','Value','Sector'])
 
     # Iterate for each sector and find GVA data
@@ -361,9 +319,6 @@ for year in range(year_start,year_end+1):
             continue
         
     print(f"GVA_data_all {GVA_data_all}")
-
-    mask = GVA_data_all["Country"].isin(common_list_full_name)
-    GVA_data_all = GVA_data_all.loc[mask, :].copy()
 
     #%% Normalise countryxsector VI by countryxsector GVA (IntOutput_Normalisation_VI.csv)
     def GVA_norm(VI,
@@ -415,15 +370,12 @@ for year in range(year_start,year_end+1):
             rel_groups_VI = list(set(rel_groups_VI))
 
             select_GVA = GVA_data_groups[GVA_data_groups['nace_r2_code'].isin(rel_groups_GVA)]
-            print(f"select_GVA {select_GVA}")
+            # print(f"select_GVA {select_GVA}")
             sum_GVA = select_GVA.groupby(by='Country', as_index=False)['Value'].sum() #it's not sum but just value by country
-            print(f"sum_GVA {sum_GVA}")
+            # print(f"sum_GVA {sum_GVA}")
 
             select_VI = VI_data_groups[VI_data_groups[db_group].isin(rel_groups_VI)]
             sum_VI = select_VI.groupby(by='Country', as_index=False)['Value'].sum()
-
-            if 'NL' in sum_VI.Country.unique():
-                sum_VI['Country'] = [EU_country_abbreviations.get(abbr) for abbr in sum_VI['Country']]
 
             data_merge = pd.merge(sum_VI, sum_GVA,
                                 on='Country',
