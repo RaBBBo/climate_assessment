@@ -7,11 +7,15 @@ import seaborn as sns
 from dq import DataQuality
 
 from api_sourcing.dataprocessor import DataProcessor
-from settings import input_path, output_path, EU_countries, EU_country_abbreviations, EU_country_full_name
+from settings import input_path, output_path, EU_countries, EU_country_abbreviations, EU_country_full_name, x, y
 
 # define year range
-year_start = 2016
+year_start = 2015
 year_end = 2019
+
+VI_EU_by_year = {}
+VI_EU_all_year = {}
+VI_NL_by_year = {}
 
 for year in range(year_start,year_end+1):
         
@@ -684,30 +688,30 @@ for year in range(year_start,year_end+1):
                                 df.loc[idx, VI] = df.loc[idx, VI] * 0.17
         df = df.round(2)
 
+        df = df[~df.index.isin(['11.1.1'])] # remove 11.1.1, as it's irrelevant
+
         return df
 
     Final_VI_00_norm = WeighingScheme(Final_VI_00_norm)
 
+    VI_EU_by_year[f'df_{year}'] = Final_VI_00_norm
+    Final_VI_00_norm_year = Final_VI_00_norm.copy()
+    Final_VI_00_norm_year["Year"] = year
+    Final_VI_00_norm_year["Sector"] = Final_VI_00_norm_year.index
+    VI_EU_all_year[f'df_{year}'] = Final_VI_00_norm_year
+
     Final_VI = Final_VI_00_norm.to_numpy()
-    x = ["Natural Resources", "Energy", "Raw Materials", "Transport", "Operations", "Non-Biological Assets",
-         "Biological Assets", "Workforce"]
-    y = ["Cotton", "Grain & Oilseeds - Production", "Sugar Crops", "Fruit", "Vegetables Covered",
-         "Vegetables Non-Covered", "Floriculture", "Forestry and logging", "Beef", "Dairy Cattle and Milk Production",
-         "Aquaculture", "Wild Catch", "Poultry", "Pork", "Sheep &Goat", "Remaining Animal Protein",
-         "Remaining Agriculture",
-         "Hay & Tabacco Farming", "Wholesale Trade (F&A)", "Retail Trade (F&A)", "Wholesale Trade (Non-F&A)",
-         "Retail Trade (Non-F&A)", "Manufacturing (F&A)", "Manufacturing (Non-F&A)",
-         "Financial and insurance activities",
-         "Construction", "Mining and quarrying", "Fossil fuel and other - Generation", "Utilities - Distribution",
-         "Renewables", "Collection and treatment of waste", "Other services", "Public Sector and services",
-         "Real estate activities", "Transportation over Water", "Remaining transportation & Storage", "Mortgages"]
-    plt.figure(figsize=(10, 7))
-    sns.heatmap(Final_VI, annot=False, cmap=sns.color_palette("Reds", as_cmap=True), cbar=True)
-    plt.title("Custom Heatmap")
+
+    plt.figure(figsize=(12, 9))
+    sns.heatmap(Final_VI, annot=True, fmt='.0%', cmap=sns.color_palette("Reds", as_cmap=True), cbar=True)
+    plt.title(f"Heatmap EU 12 countries in {year}")
     plt.xticks([i + 0.5 for i in range(0, 8)], x, fontsize=8, ha='center', rotation=0)
     plt.yticks([i + 0.5 for i in range(0, 37)], y, fontsize=8, rotation=0)
-
-    plt.show()
+    plt.tick_params(axis='y', which='major', pad=5)
+    ax = plt.gca()
+    ax.set_position([0.25, 0.1, 0.52, 0.8])
+    path = f'{output_path}/plots/VI_eu_{year}.png'
+    plt.savefig(path)
 
     Final_VI_00_norm.to_csv((f'{output_path}/VI_norm_{year}.csv'), sep=';', decimal=',')
 
@@ -720,3 +724,65 @@ for year in range(year_start,year_end+1):
     Final_VI_01_norm = WeighingScheme(Final_VI_01_norm)
 
     Final_VI_01_norm.to_csv((f'{output_path}/VI_norm_wNL_{year}.csv'), sep=';', decimal=',')
+
+a = 1
+
+VI_EU_all_year_combined = pd.concat(VI_EU_all_year, ignore_index = True)
+
+# for sector in VI_EU_all_year_combined.Sector:
+sector = "1.1.1"
+df = VI_EU_all_year_combined
+
+plt.figure(figsize=(10, 7))  # Set the figure size
+
+# Customize line styles and colors
+for i, VI in enumerate(VI_EU_by_year[f'df_{year}'].columns):
+    plt.plot(range(year_start, year_end + 1), df.loc[df["Sector"] == sector, VI].values,
+             label=VI, linewidth=2, linestyle=['-', '--', ':'][i % 3], marker='o')
+
+# Customize axis labels and title
+x_ticks = np.arange(year_start, year_end+1, 1)
+plt.xticks(x_ticks)
+plt.xlabel('Year', fontsize=14)
+plt.ylabel('Indicator Values', fontsize=14)
+plt.title(f'Trend of Indicator Values Over Years in Sector {sector}', fontsize=16)
+
+# Add grid lines
+plt.grid(True, linestyle='--', alpha=0.5)
+
+# Customize legend
+plt.legend(loc="upper right", fontsize=12)
+
+# Show the plot
+plt.tight_layout()  # Adjust spacing
+
+path = f'{output_path}/plots/VI_eu_trend_{year_start}_{year_end}.png'
+
+plt.savefig(path)
+
+# for year in range(year_start,year_end):
+#
+#     df_diff = (VI_EU_by_year[f'df_{year+1}']-VI_EU_by_year[f'df_{year}'])/VI_EU_by_year[f'df_{year}']
+#
+#     df_diff = df_diff.to_numpy()
+#
+#     plt.figure(figsize=(12, 9))
+#
+#     # Create a custom gradient from green to red
+#     custom_palette = sns.diverging_palette(120, 10, center = "light", as_cmap=True)
+#
+#     sns.heatmap(df_diff, annot=True, fmt='.0%', cmap=custom_palette, cbar=True)
+#     plt.title(f"Heatmap EU 12 countries - trend from {year} to {year+1}")
+#     plt.xticks([i + 0.5 for i in range(0, 8)], x, fontsize=8, ha='center', rotation=0)
+#     plt.yticks([i + 0.5 for i in range(0, 37)], y, fontsize=8, rotation=0)
+#     # Increase the spacing between y-axis tick labels
+#     plt.tick_params(axis='y', which='major', pad=5)
+#
+#     ax = plt.gca()
+#
+#     # Set the position of the plot (adjust the values as needed)
+#     # The arguments are [left, bottom, width, height]
+#     ax.set_position([0.25, 0.1, 0.52, 0.8])
+#     path = f'{output_path}/plots/VI_eu_diff_{year}_{year+1}.png'
+#
+#     plt.savefig(path)

@@ -149,3 +149,17 @@ country_map = {
     'IDN': 'ID',
     'ISR': 'IL',
     'SVN': 'SI'}
+
+x = ["Natural Resources", "Energy", "Raw Materials", "Transport", "Operations", "Non-Bio Assets",
+     "Bio Assets", "Workforce"]
+
+y = ["Cotton", "Grain & Oilseeds - Production", "Sugar Crops", "Fruit", "Vegetables Covered",
+     "Vegetables Non-Covered", "Floriculture", "Forestry and logging", "Beef", "Dairy Cattle and Milk Production",
+     "Aquaculture", "Wild Catch", "Poultry", "Pork", "Sheep &Goat", "Remaining Animal Protein",
+     "Remaining Agriculture",
+     "Hay & Tabacco Farming", "Wholesale Trade (F&A)", "Retail Trade (F&A)", "Wholesale Trade (Non-F&A)",
+     "Retail Trade (Non-F&A)", "Manufacturing (F&A)", "Manufacturing (Non-F&A)",
+     "Financial and insurance activities",
+     "Construction", "Mining and quarrying", "Fossil fuel and other - Generation", "Utilities - Distribution",
+     "Renewables", "Collection and treatment of waste", "Other services", "Public Sector and services",
+     "Real estate activities", "Transportation over Water", "Remaining transportation & Storage", "Mortgages"]
